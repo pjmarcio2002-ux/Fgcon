@@ -1,0 +1,8 @@
+{
+  "name": "Gestão FGCon",
+  "description": "Acompanhamento diário de produção de emboço plano e requadro com Curva S, produtividade ideal vs real, controle de retrabalho, frequência de equipe e exportação de relatórios diários e mensais em PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
