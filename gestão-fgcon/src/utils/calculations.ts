@@ -32,12 +32,24 @@ export interface ServiceBreakdown {
   percentComplete: number;
 }
 
+export type RoomDeadlineSource = 'explicit_date' | 'daily_goal' | 'completed' | 'none';
+export type RoomGoalStatus = 'completed' | 'on_track' | 'overdue' | 'unscheduled';
+export type FloorDeadlineSource = 'rooms_auto' | 'floor_manual' | 'none';
+
 export interface RoomMetrics {
   room: Room;
   floorName: string;
   plano: ServiceBreakdown;
   requadro: ServiceBreakdown;
   total: ServiceBreakdown;
+  /** Target finish date from explicit room.deadline or calculated from room.dailyGoalM2 */
+  effectiveDeadline: string | null;
+  deadlineSource: RoomDeadlineSource;
+  /** Ideal m²/day required to meet effectiveDeadline based on remaining m² */
+  idealDailyForRoom: number | null;
+  /** Working days remaining strictly after referenceDate until effectiveDeadline */
+  remainingWorkDaysToGoal: number | null;
+  roomGoalStatus: RoomGoalStatus;
 }
 
 export interface FloorMetrics {
@@ -46,6 +58,14 @@ export interface FloorMetrics {
   plano: ServiceBreakdown;
   requadro: ServiceBreakdown;
   total: ServiceBreakdown;
+  /** Automatically pulled finish date (latest effectiveDeadline across floor rooms, or legacy floor.deadline) */
+  derivedDeadline: string | null;
+  deadlineSource: FloorDeadlineSource;
+  controllingRoomId: string | null;
+  controllingRoomName: string | null;
+  roomsWithGoalsCount: number;
+  /** Ideal m²/day required for the whole floor to meet derivedDeadline */
+  floorIdealDailyRate: number;
 }
 
 export type ScheduleStatus =
@@ -265,6 +285,8 @@ export function getRoomMetrics(
   upToDate?: string
 ): RoomMetrics[] {
   const floorMap = new Map(state.floors.map((f) => [f.id, f]));
+  const referenceDate = getReferenceDate(state, upToDate);
+  const mode = state.project.workWeekMode;
   const entries = upToDate
     ? state.entries.filter((e) => e.date <= upToDate)
     : state.entries;
@@ -301,12 +323,70 @@ export function getRoomMetrics(
       plano.reworkM2 + requadro.reworkM2
     );
 
+    const isCompleted = total.targetM2 > 0 && total.remainingM2 <= 0;
+    const explicitDate = room.deadline && /^\d{4}-\d{2}-\d{2}$/.test(room.deadline)
+      ? room.deadline
+      : null;
+    const validDailyGoal =
+      typeof room.dailyGoalM2 === 'number' && Number.isFinite(room.dailyGoalM2) && room.dailyGoalM2 > 0
+        ? room.dailyGoalM2
+        : null;
+
+    let effectiveDeadline: string | null = null;
+    let deadlineSource: RoomDeadlineSource = 'none';
+
+    if (explicitDate) {
+      effectiveDeadline = explicitDate;
+      deadlineSource = 'explicit_date';
+    } else if (validDailyGoal) {
+      if (isCompleted) {
+        const lastRoomDate = roomEntries
+          .map((e) => e.date)
+          .sort()
+          .pop();
+        effectiveDeadline = lastRoomDate ?? referenceDate;
+        deadlineSource = 'completed';
+      } else if (total.remainingM2 > 0) {
+        const workDaysNeeded = Math.ceil(total.remainingM2 / validDailyGoal);
+        effectiveDeadline = addWorkingDays(referenceDate, workDaysNeeded, mode);
+        deadlineSource = 'daily_goal';
+      }
+    }
+
+    let remainingWorkDaysToGoal: number | null = null;
+    let idealDailyForRoom: number | null = null;
+    let roomGoalStatus: RoomGoalStatus = 'unscheduled';
+
+    if (isCompleted) {
+      roomGoalStatus = 'completed';
+      remainingWorkDaysToGoal = 0;
+      idealDailyForRoom = 0;
+    } else if (effectiveDeadline) {
+      remainingWorkDaysToGoal = countWorkingDays(
+        referenceDate,
+        effectiveDeadline,
+        mode,
+        false
+      );
+      idealDailyForRoom = calculateIdealDailyRate(
+        total.remainingM2,
+        remainingWorkDaysToGoal
+      );
+      roomGoalStatus =
+        referenceDate > effectiveDeadline ? 'overdue' : 'on_track';
+    }
+
     return {
       room,
       floorName: floorMap.get(room.floorId)?.name ?? 'Sem Pavimento',
       plano,
       requadro,
       total,
+      effectiveDeadline,
+      deadlineSource,
+      idealDailyForRoom,
+      remainingWorkDaysToGoal,
+      roomGoalStatus,
     };
   });
 }
@@ -315,6 +395,8 @@ export function getFloorMetrics(
   state: AppState,
   upToDate?: string
 ): FloorMetrics[] {
+  const referenceDate = getReferenceDate(state, upToDate);
+  const mode = state.project.workWeekMode;
   const roomMetrics = getRoomMetrics(state, upToDate);
   const sortedFloors = [...state.floors].sort((a, b) => a.order - b.order);
 
@@ -333,14 +415,74 @@ export function getFloorMetrics(
       return makeBreakdown(target, gross, rework);
     };
 
+    const plano = sumBreakdowns((r) => r.plano);
+    const requadro = sumBreakdowns((r) => r.requadro);
+    const total = sumBreakdowns((r) => r.total);
+
+    // Automatically pull the floor finish date from the latest room goal date
+    const roomsWithDeadlines = floorRooms.filter(
+      (rm): rm is RoomMetrics & { effectiveDeadline: string } =>
+        rm.effectiveDeadline !== null
+    );
+
+    let derivedDeadline: string | null = null;
+    let deadlineSource: FloorDeadlineSource = 'none';
+    let controllingRoomId: string | null = null;
+    let controllingRoomName: string | null = null;
+
+    if (roomsWithDeadlines.length > 0) {
+      let latest = roomsWithDeadlines[0];
+      for (let i = 1; i < roomsWithDeadlines.length; i++) {
+        if (roomsWithDeadlines[i].effectiveDeadline > latest.effectiveDeadline) {
+          latest = roomsWithDeadlines[i];
+        }
+      }
+      derivedDeadline = latest.effectiveDeadline;
+      deadlineSource = 'rooms_auto';
+      controllingRoomId = latest.room.id;
+      controllingRoomName = latest.room.name;
+    } else if (floor.deadline && /^\d{4}-\d{2}-\d{2}$/.test(floor.deadline)) {
+      derivedDeadline = floor.deadline;
+      deadlineSource = 'floor_manual';
+    }
+
+    const floorIdealDailyRate =
+      derivedDeadline && total.remainingM2 > 0
+        ? calculateIdealDailyRate(
+            total.remainingM2,
+            countWorkingDays(referenceDate, derivedDeadline, mode, false)
+          )
+        : 0;
+
     return {
       floor,
       roomCount: floorRooms.length,
-      plano: sumBreakdowns((r) => r.plano),
-      requadro: sumBreakdowns((r) => r.requadro),
-      total: sumBreakdowns((r) => r.total),
+      plano,
+      requadro,
+      total,
+      derivedDeadline,
+      deadlineSource,
+      controllingRoomId,
+      controllingRoomName,
+      roomsWithGoalsCount: roomsWithDeadlines.length,
+      floorIdealDailyRate,
     };
   });
+}
+
+/**
+ * Returns the latest automatically derived finish date across all floors (or null if none).
+ */
+export function getLatestFloorDerivedDeadline(
+  floorMetrics: FloorMetrics[]
+): string | null {
+  let latest: string | null = null;
+  for (const fm of floorMetrics) {
+    if (fm.derivedDeadline && (!latest || fm.derivedDeadline > latest)) {
+      latest = fm.derivedDeadline;
+    }
+  }
+  return latest;
 }
 
 export function getServiceSummary(

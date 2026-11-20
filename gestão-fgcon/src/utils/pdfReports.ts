@@ -833,6 +833,22 @@ export function generateDailyPdf(state: AppState, targetDate: string): jsPDF {
   // Room-by-Room Progress Table
   y = drawSectionHeading(doc, '2. Produção por Pavimento e Ambiente (Executado vs Faltante)', y);
 
+  const dailyFloorMetrics = getFloorMetrics(state, targetDate).filter(
+    (fm) => fm.derivedDeadline !== null
+  );
+  if (dailyFloorMetrics.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(...COLORS.slate);
+    const floorDatesLine = dailyFloorMetrics
+      .map((fm) => `${fm.floor.name}: ${formatDateBR(fm.derivedDeadline!)}`)
+      .join('  ·  ');
+    doc.text(`Término automático por pavimento — ${floorDatesLine}`, 14, y, {
+      maxWidth: pageWidth - 28,
+    });
+    y += 4.5;
+  }
+
   const dayByRoom = new Map<string, { plano: number; requadro: number }>();
   for (const e of dayEntries) {
     const curr = dayByRoom.get(e.roomId) ?? { plano: 0, requadro: 0 };
@@ -1182,6 +1198,20 @@ export function generateMonthlyPdf(state: AppState, yearMonth: string): jsPDF {
 
   // Room-by-room cumulative & monthly summary
   y = drawSectionHeading(doc, '2. Levantamento por Pavimento e Ambiente', y);
+  const floorsWithDates = floorMetrics.filter((fm) => fm.derivedDeadline !== null);
+  if (floorsWithDates.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(...COLORS.slate);
+    const floorSummaryLine = floorsWithDates
+      .map((fm) => `${fm.floor.name}: ${formatDateBR(fm.derivedDeadline!)}`)
+      .join('  ·  ');
+    doc.text(`Término automático por pavimento — ${floorSummaryLine}`, 14, y, {
+      maxWidth: pageWidth - 28,
+    });
+    y += 4.5;
+  }
+
   const monthEntries = state.entries.filter((e) => e.date >= start && e.date <= end);
   const monthRoomTotals = new Map<string, number>();
   for (const e of monthEntries) {
@@ -1192,8 +1222,8 @@ export function generateMonthlyPdf(state: AppState, yearMonth: string): jsPDF {
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    headStyles: { fillColor: COLORS.ink, textColor: COLORS.white, fontSize: 7 },
-    bodyStyles: { fontSize: 7, textColor: COLORS.ink },
+    headStyles: { fillColor: COLORS.ink, textColor: COLORS.white, fontSize: 6.8 },
+    bodyStyles: { fontSize: 6.8, textColor: COLORS.ink },
     alternateRowStyles: { fillColor: COLORS.surface },
     columnStyles: {
       2: { halign: 'right' },
@@ -1201,16 +1231,18 @@ export function generateMonthlyPdf(state: AppState, yearMonth: string): jsPDF {
       4: { halign: 'right' },
       5: { halign: 'right' },
       6: { halign: 'right' },
-      7: { halign: 'right' },
+      7: { halign: 'center' },
+      8: { halign: 'right' },
     },
     head: [[
       'Pavimento',
       'Ambiente',
       'Meta Total',
-      'Exec. no Mês',
+      'Exec. Mês',
       'Acum. Plano',
       'Acum. Req.',
       'Faltante',
+      'Meta Prazo',
       '% Concl.',
     ]],
     body: roomMetrics.map((rm) => [
@@ -1221,6 +1253,7 @@ export function generateMonthlyPdf(state: AppState, yearMonth: string): jsPDF {
       `${formatNumberBR(rm.plano.netExecutedM2)}`,
       `${formatNumberBR(rm.requadro.netExecutedM2)}`,
       `${formatNumberBR(rm.total.remainingM2)}`,
+      rm.effectiveDeadline ? formatShortDateBR(rm.effectiveDeadline) : '—',
       `${formatNumberBR(rm.total.percentComplete, 0)}%`,
     ]),
   });

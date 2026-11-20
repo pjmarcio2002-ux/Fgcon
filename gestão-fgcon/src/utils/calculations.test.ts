@@ -7,6 +7,7 @@ import {
   generateAlerts,
   getDayAttendanceSummary,
   getFloorMetrics,
+  getLatestFloorDerivedDeadline,
   getRoomMetrics,
   getServiceSummary,
   getWeeklyProgressData,
@@ -176,4 +177,89 @@ test('storage import validator rejects malformed payloads and accepts valid back
   const state = createSeedState();
   const good = validateImportedState(JSON.stringify(state));
   assert.equal(good.ok, true);
+});
+
+test('floor completion date is automatically pulled from the latest room deadline', () => {
+  const state = createSeedState();
+  const floors = getFloorMetrics(state, '2026-11-19');
+
+  const fl1 = floors.find((f) => f.floor.id === 'fl-1');
+  const fl2 = floors.find((f) => f.floor.id === 'fl-2');
+  const fl4 = floors.find((f) => f.floor.id === 'fl-4');
+
+  assert.equal(fl1?.deadlineSource, 'rooms_auto');
+  assert.equal(fl1?.derivedDeadline, '2026-11-13');
+  assert.equal(fl1?.controllingRoomName, 'Varanda Gourmet');
+  assert.equal(fl1?.roomsWithGoalsCount, 4);
+
+  assert.equal(fl2?.deadlineSource, 'rooms_auto');
+  assert.equal(fl2?.derivedDeadline, '2026-11-25');
+  assert.equal(fl2?.controllingRoomName, 'Varanda e Hall Social');
+
+  assert.equal(fl4?.deadlineSource, 'rooms_auto');
+  assert.equal(fl4?.derivedDeadline, '2026-12-10');
+  assert.equal(fl4?.controllingRoomName, 'Hall e Casa de Máquinas');
+
+  assert.equal(getLatestFloorDerivedDeadline(floors), '2026-12-10');
+});
+
+test('room with only dailyGoalM2 computes finish date in working days and drives floor auto deadline', () => {
+  const state = createSeedState();
+  const rooms = getRoomMetrics(state, '2026-11-19');
+  const floors = getFloorMetrics(state, '2026-11-19');
+
+  // rm-304 has 76 + 24 = 100 m² remaining, dailyGoalM2 = 10 -> 10 working days after 2026-11-19 (Thu) = 2026-12-03
+  const rm304 = rooms.find((r) => r.room.id === 'rm-304');
+  assert.ok(rm304);
+  assert.equal(rm304.deadlineSource, 'daily_goal');
+  assert.equal(rm304.effectiveDeadline, '2026-12-03');
+
+  const fl3 = floors.find((f) => f.floor.id === 'fl-3');
+  assert.equal(fl3?.deadlineSource, 'rooms_auto');
+  assert.equal(fl3?.derivedDeadline, '2026-12-03');
+  assert.equal(fl3?.controllingRoomId, 'rm-304');
+  assert.equal(fl3?.controllingRoomName, 'Varanda e Circulação');
+});
+
+test('updating a room deadline immediately shifts the floor derived finish date and controlling room', () => {
+  const state = createSeedState();
+  const updated = {
+    ...state,
+    rooms: state.rooms.map((r) =>
+      r.id === 'rm-201' ? { ...r, deadline: '2026-12-04' } : r
+    ),
+  };
+
+  const floors = getFloorMetrics(updated, '2026-11-19');
+  const fl2 = floors.find((f) => f.floor.id === 'fl-2');
+  assert.equal(fl2?.derivedDeadline, '2026-12-04');
+  assert.equal(fl2?.controllingRoomId, 'rm-201');
+  assert.equal(fl2?.controllingRoomName, 'Sala de Estar / Jantar');
+});
+
+test('floor with zero room goals falls back to none or legacy floor deadline cleanly', () => {
+  const state = createSeedState();
+  const withEmptyFloor = {
+    ...state,
+    floors: [
+      ...state.floors,
+      { id: 'fl-empty', name: '5º Pavimento', order: 5 },
+      { id: 'fl-legacy', name: '6º Pavimento', order: 6, deadline: '2026-12-18' },
+    ],
+    rooms: [
+      ...state.rooms,
+      { id: 'rm-501', floorId: 'fl-empty', name: 'Sala', targetPlanoM2: 80, targetRequadroM2: 20 },
+    ],
+  };
+
+  const floors = getFloorMetrics(withEmptyFloor, '2026-11-19');
+  const flEmpty = floors.find((f) => f.floor.id === 'fl-empty');
+  const flLegacy = floors.find((f) => f.floor.id === 'fl-legacy');
+
+  assert.equal(flEmpty?.derivedDeadline, null);
+  assert.equal(flEmpty?.deadlineSource, 'none');
+  assert.equal(flEmpty?.controllingRoomName, null);
+
+  assert.equal(flLegacy?.derivedDeadline, '2026-12-18');
+  assert.equal(flLegacy?.deadlineSource, 'floor_manual');
 });

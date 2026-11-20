@@ -204,6 +204,7 @@ export default function App() {
           ...r,
           id: makeId('rm'),
           floorId: newFloorId,
+          deadline: undefined,
         }));
 
       return {
@@ -214,7 +215,6 @@ export default function App() {
             id: newFloorId,
             name: newFloorName,
             order: nextOrder,
-            deadline: sourceFloor.deadline,
           },
         ],
         rooms: [...prev.rooms, ...copiedRooms],

@@ -665,7 +665,7 @@ export function DashboardView({ state, onNavigate }: DashboardViewProps) {
                   Avanço por Pavimento e Ambiente
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Clique em um pavimento para detalhar cada ambiente (Executado, Retrabalho e Saldo Faltante).
+                  Clique em um pavimento para detalhar cada ambiente (Executado, Saldo Faltante e Data Meta puxada automaticamente).
                 </p>
               </div>
               <button
@@ -673,7 +673,7 @@ export function DashboardView({ state, onNavigate }: DashboardViewProps) {
                 onClick={() => onNavigate('structure')}
                 className="text-xs font-medium text-[#1D4ED8] hover:underline self-start sm:self-auto"
               >
-                Gerenciar levantamentos
+                Gerenciar levantamentos e metas
               </button>
             </div>
 
@@ -688,6 +688,7 @@ export function DashboardView({ state, onNavigate }: DashboardViewProps) {
                     <th className="py-3 px-3 text-right">Req. Meta</th>
                     <th className="py-3 px-3 text-right">Req. Exec.</th>
                     <th className="py-3 px-3 text-right">Req. Falta</th>
+                    <th className="py-3 px-3 text-right">Término (Meta)</th>
                     <th className="py-3 px-4 text-right">Conclusão</th>
                   </tr>
                 </thead>
@@ -769,6 +770,28 @@ function FragmentFloorRows({
         <td className="py-3 px-3 text-right font-mono text-slate-700">
           {formatNumberBR(fm.requadro.remainingM2)}
         </td>
+        <td className="py-3 px-3 text-right whitespace-nowrap">
+          {fm.derivedDeadline ? (
+            <div
+              title={
+                fm.controllingRoomName
+                  ? `Puxado automaticamente via ${fm.controllingRoomName}`
+                  : undefined
+              }
+            >
+              <div className="font-mono font-semibold text-slate-900 tabular-nums">
+                {formatDateBR(fm.derivedDeadline)}
+              </div>
+              {fm.deadlineSource === 'rooms_auto' && fm.controllingRoomName && (
+                <div className="text-[11px] text-slate-500 max-w-[140px] truncate ml-auto">
+                  Auto · {fm.controllingRoomName}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="font-mono text-slate-400">—</span>
+          )}
+        </td>
         <td className="py-3 px-4 text-right">
           <div className="inline-flex items-center gap-2.5 justify-end">
             <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
@@ -812,6 +835,30 @@ function FragmentFloorRows({
             </td>
             <td className="py-2.5 px-3 text-right font-mono text-slate-600">
               {formatNumberBR(rm.requadro.remainingM2)}
+            </td>
+            <td className="py-2.5 px-3 text-right whitespace-nowrap">
+              {rm.effectiveDeadline ? (
+                <div>
+                  <span
+                    className={`font-mono tabular-nums ${
+                      rm.roomGoalStatus === 'overdue'
+                        ? 'text-red-700 font-medium'
+                        : rm.deadlineSource === 'daily_goal'
+                          ? 'text-[#1D4ED8]'
+                          : 'text-slate-700'
+                    }`}
+                  >
+                    {formatDateBR(rm.effectiveDeadline)}
+                  </span>
+                  {rm.room.dailyGoalM2 && (
+                    <div className="text-[10px] font-mono text-slate-400">
+                      {formatNumberBR(rm.room.dailyGoalM2)} m²/dia
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="font-mono text-slate-400">—</span>
+              )}
             </td>
             <td className="py-2.5 px-4 text-right font-mono font-medium text-slate-700">
               {formatNumberBR(rm.total.percentComplete, 0)}%

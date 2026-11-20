@@ -38,6 +38,7 @@ import {
   formatDateBR,
   formatMonthYearBR,
   formatNumberBR,
+  formatShortDateBR,
   getMonthDateRange,
 } from '../utils/dates';
 import { exportDailyPdfFile, exportMonthlyPdfFile } from '../utils/pdfReports';
@@ -529,6 +530,15 @@ export function ReportsView({
             <h3 className="font-display text-sm font-semibold text-slate-900 pb-2 border-b border-slate-200">
               2. Detalhamento por Pavimento e Ambiente
             </h3>
+            {floorMetrics.some((fm) => fm.derivedDeadline) && (
+              <p className="mt-2 text-xs text-slate-600 font-mono tabular-nums">
+                Término automático por pavimento:{' '}
+                {floorMetrics
+                  .filter((fm) => fm.derivedDeadline)
+                  .map((fm) => `${fm.floor.name} (${formatShortDateBR(fm.derivedDeadline!)})`)
+                  .join(' · ')}
+              </p>
+            )}
             <div className="overflow-x-auto mt-2">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -540,6 +550,7 @@ export function ReportsView({
                     {mode === 'daily' && <th className="py-2 px-2.5 text-right">Req. Dia</th>}
                     <th className="py-2 px-2.5 text-right">Req. Acum.</th>
                     <th className="py-2 px-2.5 text-right">Req. Falta</th>
+                    <th className="py-2 px-2.5 text-right">Meta Prazo</th>
                     <th className="py-2 px-3 text-right">% Concl.</th>
                   </tr>
                 </thead>
@@ -566,6 +577,9 @@ export function ReportsView({
                         )}
                         <td className="py-2 px-2.5 text-right font-mono">{formatNumberBR(rm.requadro.netExecutedM2)}</td>
                         <td className="py-2 px-2.5 text-right font-mono">{formatNumberBR(rm.requadro.remainingM2)}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-slate-700">
+                          {rm.effectiveDeadline ? formatShortDateBR(rm.effectiveDeadline) : '—'}
+                        </td>
                         <td className="py-2 px-3 text-right font-mono font-semibold">
                           {formatNumberBR(rm.total.percentComplete, 0)}%
                         </td>

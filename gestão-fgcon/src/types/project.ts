@@ -38,7 +38,8 @@ export interface Floor {
   id: string;
   name: string;
   order: number;
-  deadline?: string; // Optional floor milestone YYYY-MM-DD
+  /** Legacy manual fallback; when rooms have goals, floor completion is derived automatically */
+  deadline?: string;
 }
 
 export interface Room {
@@ -47,6 +48,10 @@ export interface Room {
   name: string;
   targetPlanoM2: number;
   targetRequadroM2: number;
+  /** Target completion date for this room (YYYY-MM-DD) */
+  deadline?: string;
+  /** Optional daily productivity goal for this room (m²/day) */
+  dailyGoalM2?: number;
 }
 
 export interface ProductionEntry {

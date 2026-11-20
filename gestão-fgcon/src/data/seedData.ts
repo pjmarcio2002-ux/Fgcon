@@ -11,35 +11,35 @@ import type { AppState, AttendanceRecord, DayMeta, ProductionEntry } from '../ty
  */
 export function createSeedState(): AppState {
   const floors = [
-    { id: 'fl-1', name: '1º Pavimento', order: 1, deadline: '2026-11-20' },
-    { id: 'fl-2', name: '2º Pavimento', order: 2, deadline: '2026-11-27' },
-    { id: 'fl-3', name: '3º Pavimento', order: 3, deadline: '2026-12-04' },
-    { id: 'fl-4', name: '4º Pavimento (Cobertura)', order: 4, deadline: '2026-12-11' },
+    { id: 'fl-1', name: '1º Pavimento', order: 1 },
+    { id: 'fl-2', name: '2º Pavimento', order: 2 },
+    { id: 'fl-3', name: '3º Pavimento', order: 3 },
+    { id: 'fl-4', name: '4º Pavimento (Cobertura)', order: 4 },
   ];
 
   const rooms = [
-    // 1º Pavimento (Total Plano: 370 m², Requadro: 112 m²)
-    { id: 'rm-101', floorId: 'fl-1', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34 },
-    { id: 'rm-102', floorId: 'fl-1', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28 },
-    { id: 'rm-103', floorId: 'fl-1', name: 'Suíte Master', targetPlanoM2: 92, targetRequadroM2: 26 },
-    { id: 'rm-104', floorId: 'fl-1', name: 'Varanda Gourmet', targetPlanoM2: 70, targetRequadroM2: 24 },
+    // 1º Pavimento (Total Plano: 370 m², Requadro: 112 m²) -> Término auto: 13/11/2026
+    { id: 'rm-101', floorId: 'fl-1', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34, deadline: '2026-11-04', dailyGoalM2: 50 },
+    { id: 'rm-102', floorId: 'fl-1', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28, deadline: '2026-11-06', dailyGoalM2: 45 },
+    { id: 'rm-103', floorId: 'fl-1', name: 'Suíte Master', targetPlanoM2: 92, targetRequadroM2: 26, deadline: '2026-11-09', dailyGoalM2: 45 },
+    { id: 'rm-104', floorId: 'fl-1', name: 'Varanda Gourmet', targetPlanoM2: 70, targetRequadroM2: 24, deadline: '2026-11-13', dailyGoalM2: 35 },
 
-    // 2º Pavimento (Total Plano: 380 m², Requadro: 114 m²)
-    { id: 'rm-201', floorId: 'fl-2', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34 },
-    { id: 'rm-202', floorId: 'fl-2', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28 },
-    { id: 'rm-203', floorId: 'fl-2', name: 'Suíte Master', targetPlanoM2: 96, targetRequadroM2: 28 },
-    { id: 'rm-204', floorId: 'fl-2', name: 'Varanda e Hall Social', targetPlanoM2: 76, targetRequadroM2: 24 },
+    // 2º Pavimento (Total Plano: 380 m², Requadro: 114 m²) -> Término auto: 25/11/2026
+    { id: 'rm-201', floorId: 'fl-2', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34, deadline: '2026-11-20', dailyGoalM2: 40 },
+    { id: 'rm-202', floorId: 'fl-2', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28, deadline: '2026-11-23', dailyGoalM2: 40 },
+    { id: 'rm-203', floorId: 'fl-2', name: 'Suíte Master', targetPlanoM2: 96, targetRequadroM2: 28, deadline: '2026-11-24', dailyGoalM2: 40 },
+    { id: 'rm-204', floorId: 'fl-2', name: 'Varanda e Hall Social', targetPlanoM2: 76, targetRequadroM2: 24, deadline: '2026-11-25', dailyGoalM2: 30 },
 
-    // 3º Pavimento (Total Plano: 380 m², Requadro: 114 m²)
-    { id: 'rm-301', floorId: 'fl-3', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34 },
-    { id: 'rm-302', floorId: 'fl-3', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28 },
-    { id: 'rm-303', floorId: 'fl-3', name: 'Suíte Master', targetPlanoM2: 96, targetRequadroM2: 28 },
-    { id: 'rm-304', floorId: 'fl-3', name: 'Varanda e Circulação', targetPlanoM2: 76, targetRequadroM2: 24 },
+    // 3º Pavimento (Total Plano: 380 m², Requadro: 114 m²) -> rm-304 calculada via meta diária (100 m² ÷ 10 m²/dia = 10 d.u. -> 03/12/2026)
+    { id: 'rm-301', floorId: 'fl-3', name: 'Sala de Estar / Jantar', targetPlanoM2: 120, targetRequadroM2: 34, deadline: '2026-11-27', dailyGoalM2: 35 },
+    { id: 'rm-302', floorId: 'fl-3', name: 'Cozinha e Área de Serviço', targetPlanoM2: 88, targetRequadroM2: 28, deadline: '2026-12-01', dailyGoalM2: 30 },
+    { id: 'rm-303', floorId: 'fl-3', name: 'Suíte Master', targetPlanoM2: 96, targetRequadroM2: 28, deadline: '2026-12-02', dailyGoalM2: 30 },
+    { id: 'rm-304', floorId: 'fl-3', name: 'Varanda e Circulação', targetPlanoM2: 76, targetRequadroM2: 24, dailyGoalM2: 10 },
 
-    // 4º Pavimento (Total Plano: 310 m², Requadro: 92 m²)
-    { id: 'rm-401', floorId: 'fl-4', name: 'Living Panorâmico', targetPlanoM2: 130, targetRequadroM2: 38 },
-    { id: 'rm-402', floorId: 'fl-4', name: 'Espaço Gourmet Coberto', targetPlanoM2: 100, targetRequadroM2: 30 },
-    { id: 'rm-403', floorId: 'fl-4', name: 'Hall e Casa de Máquinas', targetPlanoM2: 80, targetRequadroM2: 24 },
+    // 4º Pavimento (Total Plano: 310 m², Requadro: 92 m²) -> Término auto: 10/12/2026
+    { id: 'rm-401', floorId: 'fl-4', name: 'Living Panorâmico', targetPlanoM2: 130, targetRequadroM2: 38, deadline: '2026-12-07', dailyGoalM2: 40 },
+    { id: 'rm-402', floorId: 'fl-4', name: 'Espaço Gourmet Coberto', targetPlanoM2: 100, targetRequadroM2: 30, deadline: '2026-12-09', dailyGoalM2: 35 },
+    { id: 'rm-403', floorId: 'fl-4', name: 'Hall e Casa de Máquinas', targetPlanoM2: 80, targetRequadroM2: 24, deadline: '2026-12-10', dailyGoalM2: 30 },
   ];
 
   const workers = [
