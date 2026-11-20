@@ -1,0 +1,169 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 / Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable hardened global helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidIsoDate(val) {
+      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isBoundedMapList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is map);
+    }
+
+    function isValidProject(p) {
+      return p is map &&
+        p.keys().hasAll([
+          'name',
+          'client',
+          'location',
+          'engineer',
+          'crea',
+          'startDate',
+          'planoDeadline',
+          'requadroDeadline',
+          'workWeekMode'
+        ]) &&
+        p.keys().hasOnly([
+          'name',
+          'client',
+          'location',
+          'engineer',
+          'crea',
+          'startDate',
+          'planoDeadline',
+          'requadroDeadline',
+          'workWeekMode'
+        ]) &&
+        p.name is string && p.name.size() >= 1 && p.name.size() <= 200 &&
+        p.client is string && p.client.size() <= 200 &&
+        p.location is string && p.location.size() <= 200 &&
+        p.engineer is string && p.engineer.size() <= 200 &&
+        p.crea is string && p.crea.size() <= 100 &&
+        isValidIsoDate(p.startDate) &&
+        isValidIsoDate(p.planoDeadline) &&
+        isValidIsoDate(p.requadroDeadline) &&
+        p.workWeekMode is string &&
+        p.workWeekMode.size() <= 20 &&
+        p.workWeekMode in ['mon_fri', 'mon_sat', 'all_days'];
+    }
+
+    // Standalone Validation Blueprint called on both create and update
+    function isValidWorkspaceData(data) {
+      return data is map &&
+        data.keys().hasAll([
+          'ownerId',
+          'version',
+          'project',
+          'floors',
+          'rooms',
+          'entries',
+          'dayMetas',
+          'workers',
+          'attendance',
+          'roomHeadcounts',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'version',
+          'project',
+          'floors',
+          'rooms',
+          'entries',
+          'dayMetas',
+          'workers',
+          'attendance',
+          'roomHeadcounts',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.version is int && data.version >= 1 && data.version <= 100 &&
+        isValidProject(data.project) &&
+        isBoundedMapList(data.floors, 100) &&
+        isBoundedMapList(data.rooms, 500) &&
+        isBoundedMapList(data.entries, 5000) &&
+        isBoundedMapList(data.dayMetas, 1000) &&
+        isBoundedMapList(data.workers, 300) &&
+        isBoundedMapList(data.attendance, 5000) &&
+        isBoundedMapList(data.roomHeadcounts, 5000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Primary user-scoped workspace collection
+    match /dados/{userId} {
+      // Owner-only single-document read (PII/worker isolation)
+      allow get: if isVerifiedUser() && isValidId(userId) && isOwner(userId);
+
+      // Explicitly block collection enumeration
+      allow list: if false;
+
+      // Strictly validated initial creation with server timestamps
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidWorkspaceData(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      // Action-based validated update preserving immutable ownerId & createdAt
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidWorkspaceData(incoming()) &&
+        (
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'version',
+            'project',
+            'floors',
+            'rooms',
+            'entries',
+            'dayMetas',
+            'workers',
+            'attendance',
+            'roomHeadcounts',
+            'updatedAt'
+          ])
+        );
+
+      // Prevent destructive document deletion (resets use structured updates)
+      allow delete: if false;
+    }
+  }
+}

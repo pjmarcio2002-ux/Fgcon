@@ -4,13 +4,13 @@ import { REWORK_REASON_LABELS } from '../types/project';
 
 const STORAGE_KEY = 'planaobra_emboco_state_v1';
 
-export function loadState(): AppState {
+export function readLocalStorageState(): AppState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createSeedState();
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<AppState>;
     if (!parsed || !parsed.project || !Array.isArray(parsed.floors) || !Array.isArray(parsed.rooms)) {
-      return createSeedState();
+      return null;
     }
     return {
       version: parsed.version ?? 1,
@@ -24,8 +24,12 @@ export function loadState(): AppState {
       roomHeadcounts: Array.isArray(parsed.roomHeadcounts) ? parsed.roomHeadcounts : [],
     };
   } catch {
-    return createSeedState();
+    return null;
   }
+}
+
+export function loadState(): AppState {
+  return readLocalStorageState() ?? createSeedState();
 }
 
 export function saveState(state: AppState): { ok: boolean; bytes: number } {

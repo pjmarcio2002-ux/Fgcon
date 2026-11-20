@@ -898,7 +898,7 @@ export function DailyEntryView({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-base font-semibold text-slate-900">
-                  Armazenamento Local e Backup da Obra
+                  Armazenamento em Nuvem (Firebase) e Backup da Obra
                 </h2>
                 <p className="mt-1 text-xs sm:text-sm text-slate-600">
                   <span>{state.entries.length} lançamentos salvos</span>
@@ -964,7 +964,7 @@ export function DailyEntryView({
 
             <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-slate-500">
-                Gerenciamento rápido da base de dados local:
+                Gerenciamento rápido da base de dados sincronizada:
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 {confirmAction === 'demo' ? (

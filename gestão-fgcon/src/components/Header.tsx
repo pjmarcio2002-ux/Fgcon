@@ -1,4 +1,4 @@
-import { ClipboardEdit, FileDown, Menu } from 'lucide-react';
+import { ClipboardEdit, FileDown, LogOut, Menu } from 'lucide-react';
 import type { ActiveTab } from '../types/project';
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   onOpenMobileMenu: () => void;
   onQuickLog: () => void;
   onQuickReport: () => void;
+  onSignOut: () => void;
 }
 
 const TAB_TITLES: Record<ActiveTab, string> = {
@@ -23,6 +24,7 @@ export function Header({
   onOpenMobileMenu,
   onQuickLog,
   onQuickReport,
+  onSignOut,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-xs border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 sm:gap-8">
@@ -73,6 +75,14 @@ export function Header({
             <span className="sm:hidden">PDF</span>
           </button>
         )}
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-900 rounded-md transition-colors whitespace-nowrap shrink-0"
+        >
+          <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Sair</span>
+        </button>
       </div>
     </header>
   );

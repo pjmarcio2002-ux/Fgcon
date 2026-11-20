@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "WorkspaceData": {
+      "title": "WorkspaceData",
+      "description": "Documento consolidado de acompanhamento de obra de emboço (plano e requadro) sincronizado por usuário autenticado.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID do usuário proprietário no Firebase Authentication.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Versão do esquema de estado da aplicação."
+        },
+        "project": {
+          "type": "object",
+          "description": "Configuração da obra (nome, cliente, local, engenheiro, CREA, datas limites e calendário de trabalho)."
+        },
+        "floors": {
+          "type": "array",
+          "description": "Lista de pavimentos cadastrados na obra (máximo 100 itens)."
+        },
+        "rooms": {
+          "type": "array",
+          "description": "Lista de ambientes com metas de emboço plano, requadro, meta diária e data meta (máximo 500 itens)."
+        },
+        "entries": {
+          "type": "array",
+          "description": "Lançamentos diários de produção positiva e retrabalhos negativos em m² (máximo 5000 itens)."
+        },
+        "dayMetas": {
+          "type": "array",
+          "description": "Registros diários de clima e observações de campo para RDO (máximo 1000 itens)."
+        },
+        "workers": {
+          "type": "array",
+          "description": "Cadastro da equipe de campo (máximo 300 itens)."
+        },
+        "attendance": {
+          "type": "array",
+          "description": "Registros de frequência diária e alocação por ambiente (máximo 5000 itens)."
+        },
+        "roomHeadcounts": {
+          "type": "array",
+          "description": "Ajustes manuais de efetivo por ambiente e data (máximo 5000 itens)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Carimbo de data/hora do servidor na criação inicial do documento."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Carimbo de data/hora do servidor na última atualização do documento."
+        }
+      },
+      "required": [
+        "ownerId",
+        "version",
+        "project",
+        "floors",
+        "rooms",
+        "entries",
+        "dayMetas",
+        "workers",
+        "attendance",
+        "roomHeadcounts",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/dados/{userId}": {
+      "schema": {
+        "$ref": "#/entities/WorkspaceData"
+      },
+      "description": "Documento único de estado completo da obra pertencente exclusivamente ao usuário autenticado {userId}."
+    }
+  }
+}

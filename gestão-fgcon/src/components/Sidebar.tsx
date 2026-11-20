@@ -3,6 +3,7 @@ import {
   Building2,
   ClipboardEdit,
   FileText,
+  LogOut,
   Users,
   X,
 } from 'lucide-react';
@@ -18,6 +19,8 @@ interface SidebarProps {
   alertCount: number;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  userLabel?: string | null;
+  onSignOut: () => void;
 }
 
 const NAV_ITEMS: { id: ActiveTab; label: string; icon: typeof BarChart3 }[] = [
@@ -37,6 +40,8 @@ export function Sidebar({
   alertCount,
   mobileOpen,
   onCloseMobile,
+  userLabel,
+  onSignOut,
 }: SidebarProps) {
   const content = (
     <div className="flex h-full flex-col bg-white border-r border-slate-200">
@@ -127,9 +132,24 @@ export function Sidebar({
       </nav>
 
       {/* Quiet footer */}
-      <div className="px-6 py-4 border-t border-slate-200 text-xs text-slate-500">
-        <p>Emboço Plano e Requadro</p>
-        <p className="mt-0.5 text-slate-400">Salvamento automático local</p>
+      <div className="px-6 py-4 border-t border-slate-200 text-xs text-slate-500 space-y-2.5">
+        <div>
+          <p className="font-medium text-slate-700 truncate" title={userLabel || undefined}>
+            {userLabel || 'Conta conectada'}
+          </p>
+          <p className="mt-0.5 text-slate-400">Sincronizado via Firebase</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            onCloseMobile();
+            onSignOut();
+          }}
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-900 rounded-md transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>Sair</span>
+        </button>
       </div>
     </div>
   );
